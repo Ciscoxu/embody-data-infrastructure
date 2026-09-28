@@ -1,0 +1,8 @@
+{
+  "name": "local_archival",
+  "purpose": "archival",
+  "version": "0.1.0",
+  "options": {
+    "preserve_source_findings": true
+  }
+}

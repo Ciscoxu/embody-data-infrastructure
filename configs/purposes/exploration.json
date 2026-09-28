@@ -1,0 +1,9 @@
+{
+  "name": "local_exploration",
+  "purpose": "exploration",
+  "version": "0.1.0",
+  "options": {
+    "preview_stride": 10,
+    "missing_calibration": "degrade"
+  }
+}

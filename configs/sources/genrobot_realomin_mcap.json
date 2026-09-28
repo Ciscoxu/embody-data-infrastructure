@@ -1,0 +1,23 @@
+{
+  "source_type": "genrobot_realomin_mcap",
+  "container": "mcap",
+  "encoding": "protobuf",
+  "dataset_repo_id": "genrobot2025/10Kh-RealOmin-OpenData",
+  "revision": "main",
+  "collection_mode": "human_wearable",
+  "semantic_evidence": "Gen DAS is a human-operated dual-hand/gripper capture device; topic names are not robot execution evidence.",
+  "trajectory_semantics": {
+    "eef_pose": "observed_device_pose",
+    "magnetic_encoder": "observed_human_motion",
+    "action": "not_emitted"
+  },
+  "license": "CC-BY-SA-4.0",
+  "gated_access": true,
+  "consent": "unknown",
+  "privacy_redaction": "unknown",
+  "operator_pseudonym": "unknown",
+  "permitted_use": "unknown",
+  "default_file_count": 3,
+  "max_file_count": 5,
+  "max_download_bytes": 2147483648
+}
