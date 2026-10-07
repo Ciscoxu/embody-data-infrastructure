@@ -48,6 +48,10 @@ def process_recording(source: Path, output_dir: Path, config: dict[str, Any]) ->
                 {"profile_decision": profile_decision},
             )
         source_profile = resolve_source_profile(str(selected_profile))
+        _write(
+            layout.metadata / "recording_declaration.json",
+            _recording_declaration(source, source_profile, config),
+        )
         requested_streams = config.get("streams")
         decoded = dispatch_decode(
             AdapterKey(
@@ -210,3 +214,26 @@ def _now() -> str:
 
 def _optional_int(value: Any) -> int | None:
     return None if value is None else int(value)
+
+
+def _recording_declaration(
+    source: Path, source_profile: Any, config: dict[str, Any]
+) -> dict[str, Any]:
+    configured_rights = config.get("rights")
+    rights = configured_rights if isinstance(configured_rights, dict) else {}
+    return {
+        "declaration_version": "0.1.0",
+        "source_adapter": "mcap",
+        "source_path": str(source.resolve()),
+        "collection_mode": source_profile.collection_mode,
+        "declared_collection_mode": config.get("declared_collection_mode", "unknown"),
+        "semantic_evidence": source_profile.semantic_evidence,
+        "trajectory_semantics": source_profile.trajectory_semantics,
+        "operator_pseudonym": config.get("operator_pseudonym", "unknown"),
+        "device_id": config.get("device_id", "unknown"),
+        "rights": {
+            key: rights.get(key, "unknown")
+            for key in ("consent", "license", "privacy_redaction", "permitted_use")
+        },
+        "raw_mutation_policy": "read_only",
+    }

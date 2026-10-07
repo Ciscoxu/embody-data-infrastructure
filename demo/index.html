@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Embodied Data Demo</title>
+  <style>
+    :root { color-scheme: dark; font: 15px/1.5 system-ui, sans-serif; background:#0c111d; color:#e8edf7 }
+    body { max-width:1100px; margin:0 auto; padding:32px 20px }
+    h1 { margin-bottom:4px } .muted { color:#9eabc2 } .grid { display:grid; grid-template-columns:360px 1fr; gap:20px }
+    section { background:#151d2c; border:1px solid #26334b; border-radius:14px; padding:18px }
+    label { display:block; margin:12px 0 4px } input,select,button { box-sizing:border-box; width:100%; padding:10px; border-radius:8px; border:1px solid #34445f; background:#0e1625; color:inherit }
+    button { cursor:pointer; background:#3478f6; border:0; margin-top:14px; font-weight:650 } button.secondary { width:auto; padding:8px 12px; margin:4px }
+    .record { border-top:1px solid #2b3850; padding:14px 0 } .pill { display:inline-block; padding:2px 8px; border-radius:99px; background:#263752; margin-right:6px }
+    pre { white-space:pre-wrap; overflow-wrap:anywhere; background:#0b1220; border-radius:9px; padding:14px; max-height:520px; overflow:auto }
+    #message { min-height:24px; color:#ffcc73 } @media(max-width:800px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <h1>Embodied Data Ingest & Trust</h1>
+  <p class="muted">本地实验版：登记原始 recording，显式声明采集模式，运行 Phase 1 并查看结构化结果。</p>
+  <div class="grid">
+    <section>
+      <h2>创建 recording</h2>
+      <form id="create">
+        <label>原始输入绝对路径</label><input name="source_path" required placeholder="E:\data\recording.mcap">
+        <label>输入类型</label><select name="input_type"><option value="mcap">MCAP</option><option value="folder_bundle_v1">folder_bundle_v1</option></select>
+        <label>采集模式</label><select name="collection_mode"><option value="human_wearable">human_wearable</option><option value="teleop_device_only">teleop_device_only</option><option value="teleop_robot">teleop_robot</option></select>
+        <label>Operator pseudonym</label><input name="operator_pseudonym" placeholder="unknown">
+        <label>Device ID</label><input name="device_id" placeholder="unknown">
+        <label>Consent</label><input name="consent" placeholder="unknown">
+        <label>License</label><input name="license" placeholder="unknown">
+        <label>Privacy / redaction</label><input name="privacy_redaction" placeholder="unknown">
+        <label>Permitted use</label><input name="permitted_use" placeholder="unknown">
+        <button>登记（不复制、不修改 Raw）</button>
+      </form>
+      <p id="message"></p>
+    </section>
+    <section>
+      <h2>Recordings</h2><div id="records"></div>
+      <h2>Run 详情</h2><pre id="detail">尚未选择 run</pre>
+    </section>
+  </div>
+<script>
+const records = document.querySelector('#records'), detail = document.querySelector('#detail'), message = document.querySelector('#message');
+async function request(url, options={}) { const r=await fetch(url, options), value=await r.json(); if(!r.ok) throw new Error(value.error?.message||'请求失败'); return value; }
+async function refresh(){ const value=await request('/api/recordings'); records.innerHTML=value.recordings.map(r=>`<div class="record"><b>${r.recording_id}</b><br><span class="pill">${r.input_type}</span><span class="pill">${r.collection_mode}</span><div class="muted">${r.source_path}</div><button class="secondary" onclick="processRecording('${r.recording_id}')">启动处理</button>${r.runs.map(x=>`<button class="secondary" onclick="showRun('${x.run_id}')">${x.run_id}: ${x.state}</button>`).join('')}</div>`).join('')||'<p class="muted">还没有 recording。</p>'; }
+async function processRecording(id){ message.textContent='处理中…'; try { const run=await request(`/api/recordings/${id}/process`,{method:'POST'}); detail.textContent=JSON.stringify(run,null,2); message.textContent=`${run.run_id}: ${run.state}`; await refresh(); } catch(e){message.textContent=e.message;} }
+async function showRun(id){ try { detail.textContent=JSON.stringify(await request(`/api/runs/${id}`),null,2); } catch(e){message.textContent=e.message;} }
+document.querySelector('#create').addEventListener('submit',async e=>{e.preventDefault(); const payload=Object.fromEntries(new FormData(e.target)); try { await request('/api/recordings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); message.textContent='Recording 已登记。'; await refresh(); } catch(err){message.textContent=err.message;} });
+refresh().catch(e=>message.textContent=e.message);
+</script>
+</body>
+</html>

@@ -12,6 +12,9 @@ venv/
 !.env.example
 dist/
 build/
+.agent-browser/
+node_modules/
+agent-browser-state*.json
 .coverage
 htmlcov/
 examples/sample_processed/*

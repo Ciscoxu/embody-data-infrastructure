@@ -11,6 +11,7 @@ def build_source_qc_facts(
     sync: dict[str, Any],
     decode_failures: list[dict[str, Any]],
     video_assets: list[dict[str, Any]],
+    require_video: bool = True,
 ) -> list[dict[str, Any]]:
     """Return transport/time facts without applying a downstream purpose policy."""
     findings: list[dict[str, Any]] = []
@@ -50,9 +51,9 @@ def build_source_qc_facts(
             )
     for failure in decode_failures:
         findings.append(_finding("fail", "DECODE_FAILURE", **failure))
-    if not video_assets:
+    if not video_assets and require_video:
         findings.append(_finding("fail", "VIDEO_STREAM_MISSING"))
-    else:
+    elif video_assets:
         for asset in video_assets:
             if asset["frame_count"] <= 0:
                 findings.append(_finding("fail", "VIDEO_EMPTY", stream_id=asset["stream_id"]))
@@ -78,16 +79,28 @@ def build_semantic_qc_facts(
     descriptors: dict[str, dict[str, Any]],
     records: dict[str, list[dict[str, Any]]],
     calibration: dict[str, Any],
+    required_modalities: tuple[str, ...] = (
+        "rgb_video",
+        "camera_calibration",
+        "imu",
+        "gripper_opening",
+        "pose",
+    ),
+    require_bilateral: bool = True,
+    gripper_range: tuple[float, float] | None = (0.0, 0.103),
 ) -> list[dict[str, Any]]:
     """Return representation/calibration facts without changing source semantics."""
     findings: list[dict[str, Any]] = list(calibration["findings"])
     modalities = {value["modality"] for value in descriptors.values()}
-    for modality in ("rgb_video", "camera_calibration", "imu", "gripper_opening", "pose"):
+    for modality in required_modalities:
         if modality not in modalities:
             findings.append(_finding("fail", "REQUIRED_MODALITY_MISSING", modality=modality))
-    hands = {"robot0" if "robot0" in sid else "robot1" for sid in descriptors}
-    if hands != {"robot0", "robot1"}:
-        findings.append(_finding("warn", "BILATERAL_STREAM_COVERAGE", observed=sorted(hands)))
+    if require_bilateral:
+        hands = {hand for sid in descriptors for hand in ("robot0", "robot1") if hand in sid}
+        if hands != {"robot0", "robot1"}:
+            findings.append(
+                _finding("warn", "BILATERAL_STREAM_COVERAGE", observed=sorted(hands))
+            )
     for stream_id, rows in records.items():
         modality = descriptors[stream_id]["modality"]
         if modality == "pose":
@@ -104,10 +117,11 @@ def build_semantic_qc_facts(
                             value=norm,
                         )
                     )
-        elif modality == "gripper_opening":
+        elif modality == "gripper_opening" and gripper_range is not None:
+            minimum, maximum = gripper_range
             for index, row in enumerate(rows):
                 value = row["data"]["opening"]
-                if not 0.0 <= value <= 0.103:
+                if not minimum <= value <= maximum:
                     findings.append(
                         _finding(
                             "fail",
@@ -138,17 +152,31 @@ def build_qc_report(
     calibration: dict[str, Any],
     decode_failures: list[dict[str, Any]],
     video_assets: list[dict[str, Any]],
+    required_modalities: tuple[str, ...] = (
+        "rgb_video",
+        "camera_calibration",
+        "imu",
+        "gripper_opening",
+        "pose",
+    ),
+    require_bilateral: bool = True,
+    gripper_range: tuple[float, float] | None = (0.0, 0.103),
+    require_video: bool = True,
 ) -> dict[str, Any]:
     """Build the legacy aggregate report plus independently consumable facts."""
     semantic_findings = build_semantic_qc_facts(
         descriptors=descriptors,
         records=records,
         calibration=calibration,
+        required_modalities=required_modalities,
+        require_bilateral=require_bilateral,
+        gripper_range=gripper_range,
     )
     source_findings = build_source_qc_facts(
         sync=sync,
         decode_failures=decode_failures,
         video_assets=video_assets,
+        require_video=require_video,
     )
     findings = semantic_findings + source_findings
     severity = {"pass": 0, "warn": 1, "fail": 2}

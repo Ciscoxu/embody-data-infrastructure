@@ -1,0 +1,15 @@
+{
+  "name": "embody-data-infrastructure-devtools",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "browser:install": "agent-browser install",
+    "browser:open": "agent-browser --session embody-data-demo open http://127.0.0.1:8765",
+    "browser:debug": "agent-browser --session embody-data-demo open http://127.0.0.1:8765 --headed",
+    "browser:snapshot": "agent-browser --session embody-data-demo snapshot -i --json",
+    "browser:close": "agent-browser --session embody-data-demo close"
+  },
+  "devDependencies": {
+    "agent-browser": "0.38.2"
+  }
+}
